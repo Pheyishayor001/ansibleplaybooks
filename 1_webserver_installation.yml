@@ -1,0 +1,21 @@
+---
+- name: Configure Web Servers
+  hosts: web
+  become: true
+  tasks:
+    - name: Install HTTPD
+      yum:
+        name: httpd
+        state: present
+
+    - name: Start and Enable HTTPD
+      service:
+        name: httpd
+        state: started
+        enabled: true
+
+    - name: Copy trillo website to the servers
+      copy:
+        content: "Welcome to Feyisayo's server, managed by Ansible!"
+        dest: /var/www/html/index.html
+

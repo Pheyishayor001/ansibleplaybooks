@@ -1,0 +1,44 @@
+---
+- name: Automate scheduling of a periodic task
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Ensure /usr/local/bin/backup.sh exists
+      copy:
+        dest: /usr/local/bin/backup.sh
+        content: |
+          #!/bin/bash
+          echo "$(date): Backup started" >> /var/log/backup.log
+          # Add backup commands here
+          echo "$(date): Backup completed" >> /var/log/backup.log
+        mode: '0755'
+
+    - name: Ensure /var/log directory exists
+      file:
+        path: /var/log
+        state: directory
+        mode: '0755'
+
+    - name: Ensure /var/log/backup.log exists
+      file:
+        path: /var/log/backup.log
+        state: touch
+        mode: '0644'
+
+    - name: Schedule cron job for backup script
+      cron:
+        name: "Daily backup"
+        minute: "0"
+        hour: "0"
+        job: "/usr/local/bin/backup.sh >> /var/log/backup.log 2>&1"
+
+    - name: Verify cron job is configured
+      shell: "crontab -l | grep '/usr/local/bin/backup.sh'"
+      register: cron_job_check
+      failed_when: cron_job_check.rc != 0
+
+    - name: Debug cron job verification result
+      debug:
+        msg: "Cron job verification result: {{ cron_job_check.stdout }}"
+

@@ -1,0 +1,76 @@
+---
+- name: postgresql Playbook
+  hosts: db
+  become: true
+
+  vars: 
+    ansible_db_user_password: "$1$7uK763iC$wg31EeGlRR7rV/YKMmIG9."
+    
+
+  tasks:
+    - name: Install packages
+      ansible.builtin.yum:
+        name:
+          - postgresql
+          - postgresql-server
+          - postgresql-contrib
+          - postgresql-libs
+        state: present
+   
+    - name: Install psycopg2 via pip to enable creation of database with python
+      ansible.builtin.pip:
+        name: psycopg2-binary
+        executable: /usr/bin/pip3
+
+
+    - name: Check if PostgreSQL is initialized
+      ansible.builtin.stat:
+        path: "/var/lib/pgsql/data/pg_hba.conf"
+      register: postgres_data
+
+    - name: Initialize PostgreSQL
+      ansible.builtin.shell: "postgresql-setup initdb"
+      when: not postgres_data.stat.exists
+
+    - name: Ensure listen_addresses is set to '*'
+      lineinfile:
+        path: /var/lib/pgsql/data/postgresql.conf
+        regexp: '^listen_addresses'
+        line: "listen_addresses = '*'"
+        state: present
+      
+
+    - name: Ensure pg_hba.conf allows external connections
+      blockinfile:
+        path: /var/lib/pgsql/data/pg_hba.conf
+        marker: "# BEGIN ANSIBLE MANAGED BLOCK - EXTERNAL CONNECTIONS"
+        block: |
+          host    all    all    0.0.0.0/0    md5
+      become: true
+      
+
+    - name: Start and enable service
+      ansible.builtin.service:
+        name: postgresql
+        state: started
+        enabled: yes
+      become: yes
+
+     
+    - name: Create Database ansible_db
+      postgresql_db:
+        name: ansible_db
+        login_user: postgres
+        #login_password: your_password
+        login_host: "{{ inventory_hostname  }}"
+        login_port: 5432
+
+    - name: Connect to ansible_db database, create ansible_db user, and grant access to database 
+      postgresql_user:
+        db: ansible_db
+        name: ansible_db
+        #password: feyisayo
+        password: "{{ ansible_db_user_password  }}"
+        #priv: "CONNECT/products:ALL"
+        expires: "Jan 31 2026"
+

@@ -1,0 +1,20 @@
+---
+- name: Create a User and Password
+  hosts: all
+  become: true
+
+  vars: 
+    ansible_user_password: "$1$Tb/4EtNQ$IgFhWr5hk3/rQeV2ITQ9n."
+    ansible_user_ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCax+g02FhWSZoOFrs4FVumQ2EzwtzQpf1VFkdkcBxz8s3m5Hmj2h4dZHO9OCqKP3sQhFI7NQi0Z+Apux51ySIRKtxHxuxN+d77KptKcrVCCxyPw47zQQThHSVqkqL//JbzNuXqwMmG63Xrq13ZwNabQ6PvOsaOmj7opS7hzeYFiCp81VWAx/i65yI9ibXPKXHHQVTVsEpTJCP/0VlRGgoiyPBE6PnntqdUSDaVoslHLC/+Lr3fD3JMe43D/TRIr5dNusixQ6mqrbGm2GeUstqL/cDVZWc+jKIsy+Ec+5MqsC/N+ngWekzNBrilhsT28oE4bnUYzHF7qFsC/2c+QifJ"
+  tasks:
+    - name: create user and password
+      user:
+        name: ansible_user
+        comment: Ansible User
+        password: "{{ ansible_user_password }}"
+        state: present
+    - name: Set up SSH key for ansible_user
+      authorized_key:
+        user: ansible_user
+        key: "{{ ansible_user_ssh_key }}"
+        state: present

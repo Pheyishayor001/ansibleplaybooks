@@ -1,0 +1,27 @@
+---
+- name: postgresql Playbook
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Update all system packages
+      yum:
+        name: "*"
+        state: latest
+
+    - name: clean up unused packages
+      shell: |
+        yum autoremove -y
+
+    - name: Remove old kernels
+      shell: |
+        package-cleanup --oldkernels --count=1 -y
+
+    - name: Check /tmp free space
+      shell: df /tmp --output=avail | tail -1
+      register: tmp_freespace
+
+    - name: Fail if /tmp does not have at least 1GB of free space
+      fail:
+        msg: "/tmp does not have the minimum space required to continue (1GB requested)."
+      when: tmp_freespace.stdout | float < 1000000
