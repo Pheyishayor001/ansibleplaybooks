@@ -3,9 +3,8 @@
   hosts: db
   become: true
 
-  vars: 
-    ansible_db_user_password: "$1$7uK763iC$wg31EeGlRR7rV/YKMmIG9."
-    
+  vars_files: 
+    - vars.yml 
 
   tasks:
     - name: Install packages
@@ -40,7 +39,7 @@
         state: present
       
 
-    - name: Ensure pg_hba.conf allows external connections
+    - name: Ensure pg_hba.conf allows external connections from all hosts
       blockinfile:
         path: /var/lib/pgsql/data/pg_hba.conf
         marker: "# BEGIN ANSIBLE MANAGED BLOCK - EXTERNAL CONNECTIONS"
@@ -56,12 +55,20 @@
         enabled: yes
       become: yes
 
-     
-    - name: Create Database ansible_db
+#log into the DB to set password for postgres user before next step 
+    - name: set postgres db password
+      shell: |
+        psql -U postgres -c "ALTER USER postgres PASSWORD '{{ postgres_password  }}';"
+      become: true
+      become_user: postgres
+
+    - name: Create ansible_db Database
       postgresql_db:
         name: ansible_db
+        state: present
         login_user: postgres
-        #login_password: your_password
+        login_password: "{{ postgres_password  }}"
+        owner: postgres
         login_host: "{{ inventory_hostname  }}"
         login_port: 5432
 
@@ -69,8 +76,22 @@
       postgresql_user:
         db: ansible_db
         name: ansible_db
-        #password: feyisayo
         password: "{{ ansible_db_user_password  }}"
-        #priv: "CONNECT/products:ALL"
-        expires: "Jan 31 2026"
+        priv: "ALL"
+        state: present
+        login_user: postgres
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ inventory_hostname }}"   
+        login_port: 5432     
 
+    - name: Grant permissions to ansible_db database to ansible_db user
+      postgresql_privs:
+        db: ansible_db
+        role: ansible_db
+        type: database
+        privs: "ALL"
+        state: present
+        login_user: postgres
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ inventory_hostname }}"
+        login_port: 5432 
